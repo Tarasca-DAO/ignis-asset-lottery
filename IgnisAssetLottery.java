@@ -4,21 +4,17 @@ import nxt.addons.*;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.GetAccountAssetsCall;
 import nxt.http.callers.GetAssetsByIssuerCall;
-import nxt.http.callers.SendMessageCall;
 import nxt.http.callers.TransferAssetCall;
 import nxt.http.responses.TransactionResponse;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static nxt.BlockchainTest.CHUCK;
 import static nxt.blockchain.ChildChain.IGNIS;
 
 /**
- * Sample contract to demonstrate the basic operations
+ * Contract to send a number of random assets upon payment
  */
 public class IgnisAssetLottery extends AbstractContract {
 
@@ -34,19 +30,16 @@ public class IgnisAssetLottery extends AbstractContract {
         }
 
         // load Parameters
-        long priceIgnis = getContractParams().getLong("priceIgnis", 40*IGNIS.ONE_COIN);
+        long priceIgnis = getContractParams().getLong("priceIgnis", 26*IGNIS.ONE_COIN);
         int priceGiftz = getContractParams().getInt("priceGiftz", 1);
-        String validCurrency = getContractParams().getString("validCurrency", "");
-        //long feePunishmentIgnis = getContractParams().getLong("feePunishmentIgnis", IGNIS.ONE_COIN);
+        String validCurrency = getContractParams().getString("validCurrency", "8633185858724739856");
         int cardsPerPack = getContractParams().getInt("cardsPerPack", 3);
-        String collectionRs = CHUCK.getRsAccount();
-        //getContractParams().getString("collectionRs", CHUCK.getRsAccount());
+        String collectionRs = getContractParams().getString("collectionRs", "ARDOR-6645-FEKY-BC5T-EPW5D");
         String accountRs = context.getAccountRs();
         int maxPacks = 9/cardsPerPack;
 
         // Get trigger transaction
         TransactionResponse triggerTransaction = context.getTransaction();
-
 
 
         int numPacks = isGiftzPayment(triggerTransaction,validCurrency,priceGiftz);
