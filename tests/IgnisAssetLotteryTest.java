@@ -16,7 +16,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
     @Test
     public void buyMultiPacksIgnis() {
-        Logger.logDebugMessage("Test buyMultiPacksIgnis()");
+        Logger.logInfoMessage("TEST buyMultiPacksIgnis()");
 
         int collectionSize = TarascaTester.collectionSize();
         int cardsPerPack = TarascaTester.cardsPerPack();
@@ -30,7 +30,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
         JO setupParams = new JO();
         setupParams.put("priceIgnis", TarascaTester.priceIgnis());
-        setupParams.put("cardsPerPack", cardsPerPack);
+        setupParams.put("cardsPerPack", TarascaTester.cardsPerPack());
         setupParams.put("validCurrency", currencyId);
         setupParams.put("collectionRs", CHUCK.getRsAccount());
 
@@ -59,6 +59,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         int numDaves = davesAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
         ;
 
+        Logger.logInfoMessage("TEST buyMultiPacksIgnis() results: numBobs: %d, numDaves: %d",numBobs,numDaves);
         Assert.assertTrue(numBobs == 1 * cardsPerPack);
         Assert.assertTrue(numDaves == 2 * cardsPerPack);
     }

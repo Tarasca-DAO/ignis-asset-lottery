@@ -51,13 +51,11 @@ public class IgnisAssetLottery extends AbstractContract {
         }
 
         Params params = context.getParams(Params.class);
-        // Check if the it to perform payment distribution on this height
-        // load Parameters
-        long priceIgnis = params.priceIgnis();
-        int priceGiftz = params.priceGiftz();
-        String validCurrency = params.validCurrency();
-        int cardsPerPack = params.cardsPerPack();
-        String collectionRs = params.collectionRs();
+        long priceIgnis = context.getParams(Params.class).priceIgnis();
+        int priceGiftz = context.getParams(Params.class).priceGiftz();
+        String validCurrency = context.getParams(Params.class).validCurrency();
+        int cardsPerPack = context.getParams(Params.class).cardsPerPack();
+        String collectionRs = context.getParams(Params.class).collectionRs();
         String accountRs = context.getAccountRs();
         int maxPacks = 9/cardsPerPack;
 
@@ -77,7 +75,7 @@ public class IgnisAssetLottery extends AbstractContract {
         context.logInfoMessage("CONTRACT: number of packs: %d", numPacks);
         if (numPacks > maxPacks){
             numPacks = maxPacks;
-            context.logInfoMessage("CONTRACT: number of packs reduced to fit chain limit: %d", numPacks);
+            context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain limit of 9tx", numPacks);
         }
 
         JO accAssets = GetAccountAssetsCall.create().account(accountRs).call();
@@ -122,7 +120,7 @@ public class IgnisAssetLottery extends AbstractContract {
 
         //String selectedAsset = distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
         context.logInfoMessage("CONTRACT: done");
-        return new JO();
+        return context.getResponse();
     }
 
 

@@ -14,9 +14,9 @@ import static nxt.blockchain.ChildChain.IGNIS;
 
 public class TarascaTester {
 
-    public static long priceIgnis() {return 23*IGNIS.ONE_COIN;}
+    public static long priceIgnis() {return 26*IGNIS.ONE_COIN;}
     public static long priceGiftz() {return 1;}
-    public static int cardsPerPack() {return 2;}
+    public static int cardsPerPack() {return 3;}
     public static int collectionSize() {return 8;}
 
     public static JO getCollectionCurrency(String account){
