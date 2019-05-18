@@ -18,23 +18,46 @@ import static nxt.blockchain.ChildChain.IGNIS;
  */
 public class IgnisAssetLottery extends AbstractContract {
 
+    @ContractParametersProvider
+    public interface Params {
+        @ContractSetupParameter
+        default long priceIgnis() {
+            return 26*IGNIS.ONE_COIN;
+        }
+
+        @ContractSetupParameter
+        default int priceGiftz() {
+            return 1;
+        }
+
+        @ContractSetupParameter
+        default int cardsPerPack() { return 3; }
+
+        @ContractSetupParameter
+        default String collectionRs() { return "ARDOR-YDK2-LDGG-3QL8-3Z9JD"; }
+
+        @ContractSetupParameter
+        default String validCurrency() { return "8633185858724739856"; }
+    }
     /**
      * Invoke when the trigger transaction is executed in a block
      * @param context the transaction context
      */
     @Override
-    public void processTransaction(TransactionContext context) {
+    public JO processTransaction(TransactionContext context) {
         // Validate that the contract is the recipient
         if (context.notSameRecipient()) {
-            return;
+            return new JO();
         }
 
+        Params params = context.getParams(Params.class);
+        // Check if the it to perform payment distribution on this height
         // load Parameters
-        long priceIgnis = getContractParams().getLong("priceIgnis", 26*IGNIS.ONE_COIN);
-        int priceGiftz = getContractParams().getInt("priceGiftz", 1);
-        String validCurrency = getContractParams().getString("validCurrency", "8633185858724739856");
-        int cardsPerPack = getContractParams().getInt("cardsPerPack", 3);
-        String collectionRs = getContractParams().getString("collectionRs", "ARDOR-6645-FEKY-BC5T-EPW5D");
+        long priceIgnis = params.priceIgnis();
+        int priceGiftz = params.priceGiftz();
+        String validCurrency = params.validCurrency();
+        int cardsPerPack = params.cardsPerPack();
+        String collectionRs = params.collectionRs();
         String accountRs = context.getAccountRs();
         int maxPacks = 9/cardsPerPack;
 
@@ -49,7 +72,7 @@ public class IgnisAssetLottery extends AbstractContract {
 
         if (numPacks == 0){
             context.logInfoMessage("CONTRACT: no packs bought, stop.");
-            return;
+            return new JO();
         }
         context.logInfoMessage("CONTRACT: number of packs: %d", numPacks);
         if (numPacks > maxPacks){
@@ -70,8 +93,11 @@ public class IgnisAssetLottery extends AbstractContract {
 
         // Select random recipient account, your chance of being selected is proportional to the sum of your payments
         Map<String, Long> assetsForDraw = getAssetsForDraw(accountAssets, collectionAssets);
-        Contract<Map<String, Long>, String> distributedRandomNumberGenerator = context.loadContract("DistributedRandomNumberGenerator");
-        DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName());
+        ContractAndSetupParameters contractAndParameters = context.loadContract("DistributedRandomNumberGenerator");
+        Contract<Map<String, Long>, String> distributedRandomNumberGenerator = (Contract<Map<String, Long>, String>) contractAndParameters.getContract();
+        //Contract<Map<String, Long>, String> distributedRandomNumberGenerator = context.loadContract("DistributedRandomNumberGenerator");
+        DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
+        //DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName());
         //distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
 
         Map<String,Integer> pack = new HashMap<String, Integer>(numPacks*cardsPerPack);
@@ -96,6 +122,7 @@ public class IgnisAssetLottery extends AbstractContract {
 
         //String selectedAsset = distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
         context.logInfoMessage("CONTRACT: done");
+        return new JO();
     }
 
 
