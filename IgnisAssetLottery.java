@@ -20,6 +20,11 @@ import nxt.http.callers.SendMoneyCall;
 import nxt.http.callers.TransferAssetCall;
 import nxt.http.responses.TransactionResponse;
 
+import nxt.addons.RandomnessSource;
+import nxt.crypto.Crypto;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+
 public class IgnisAssetLottery extends AbstractContract {
     public IgnisAssetLottery() {
     }
@@ -71,12 +76,19 @@ public class IgnisAssetLottery extends AbstractContract {
                 JO cAssets = GetAssetsByIssuerCall.create().account(new String[]{collectionRs}).call();
                 JA schachtel = new JA(cAssets.get("assets"));
                 JA collectionAssets = new JA(schachtel.getObject(0));
-                long randomSeed = 0L;
-                context.initRandom(randomSeed);
+                context.initRandom(context.getBlock().getBlockId());
                 Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
                 ContractAndSetupParameters contractAndParameters = context.loadContract("DistributedRandomNumberGenerator");
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
                 DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
+
+                // modify seed by trigger transactionFullHash
+                RandomnessSource random = delegatedContext.getRandomnessSource();
+                ByteBuffer byteArray = ByteBuffer.allocate(Long.BYTES + 32);
+                byteArray.putLong(random.getSeed());
+                byteArray.put(context.getTransaction().getFullHash());
+                random.setSeed(hashToLong(Crypto.sha256().digest(byteArray.array())));
+
                 Map<String, Integer> pack = new HashMap(numPacks * cardsPerPack);
 
                 for(int j = 0; j < numPacks; ++j) {
@@ -131,6 +143,11 @@ public class IgnisAssetLottery extends AbstractContract {
     }
 
     private void packCards(JO AccountAssets) {
+    }
+
+    private long hashToLong(byte[] hash) {
+        BigInteger bigInteger = new BigInteger(1, new byte[] {hash[7], hash[6], hash[5], hash[4], hash[3], hash[2], hash[1], hash[0]});
+        return bigInteger.longValue();
     }
 
     @ContractParametersProvider
