@@ -3,6 +3,7 @@ package com.jelurida.ardor.contracts;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import nxt.util.Convert;
 import nxt.addons.AbstractContract;
 import nxt.addons.Contract;
 import nxt.addons.ContractAndSetupParameters;
@@ -19,6 +20,7 @@ import nxt.http.callers.GetAssetsByIssuerCall;
 import nxt.http.callers.SendMoneyCall;
 import nxt.http.callers.TransferAssetCall;
 import nxt.http.responses.TransactionResponse;
+
 
 public class IgnisAssetLottery extends AbstractContract {
     public IgnisAssetLottery() {
@@ -48,22 +50,22 @@ public class IgnisAssetLottery extends AbstractContract {
             }
 
             if (numPacks == 0) {
-                context.logInfoMessage("CONTRACT: no packs bought, stop.", new Object[0]);
+                context.logInfoMessage("CONTRACT: no packs bought, stop.");
                 return new JO();
             } else {
-                context.logInfoMessage("CONTRACT: number of packs: %d", new Object[]{numPacks});
+                context.logInfoMessage("CONTRACT: number of packs: %d", numPacks);
                 if (numPacks > maxPacks) {
                     numPacks = maxPacks;
-                    context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain limit of 9tx", new Object[]{maxPacks});
+                    context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain limit of 9tx", maxPacks);
                 }
 
                 if (payCut) {
                     long tarascaCut = tarascaCutPerPack * (long)numPacks;
-                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis", new Object[]{tarascaCut / ChildChain.IGNIS.ONE_COIN});
-                    SendMoneyCall sendMoneyCall = ((SendMoneyCall)SendMoneyCall.create(chainId).recipient(tarascaRs)).amountNQT(tarascaCut);
+                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCut / ChildChain.IGNIS.ONE_COIN, tarascaRs,chainId);
+                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCut);
                     context.createTransaction(sendMoneyCall);
                 } else {
-                    context.logInfoMessage("CONTRACT: not paying Tarasca any Ignis", new Object[0]);
+                    context.logInfoMessage("CONTRACT: not paying Tarasca any Ignis");
                 }
 
                 JO accAssets = GetAccountAssetsCall.create().account(accountRs).call();
@@ -71,12 +73,13 @@ public class IgnisAssetLottery extends AbstractContract {
                 JO cAssets = GetAssetsByIssuerCall.create().account(new String[]{collectionRs}).call();
                 JA schachtel = new JA(cAssets.get("assets"));
                 JA collectionAssets = new JA(schachtel.getObject(0));
-                long randomSeed = 0L;
-                context.initRandom(randomSeed);
+
+                context.initRandom(context.getTransaction().getTransactionId());
                 Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
                 ContractAndSetupParameters contractAndParameters = context.loadContract("DistributedRandomNumberGenerator");
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
                 DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
+
                 Map<String, Integer> pack = new HashMap(numPacks * cardsPerPack);
 
                 for(int j = 0; j < numPacks; ++j) {
@@ -87,7 +90,7 @@ public class IgnisAssetLottery extends AbstractContract {
                             pack.put(asset, (Integer)curValue + 1);
                         }
 
-                        context.logInfoMessage("CONTRACT: selected asset: %s", new Object[]{asset});
+                        context.logInfoMessage("CONTRACT: selected asset: %s", asset);
                     }
                 }
 
@@ -95,7 +98,7 @@ public class IgnisAssetLottery extends AbstractContract {
                     TransferAssetCall transferAsset = ((TransferAssetCall)TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs())).asset(assetx).quantityQNT((long)quantity);
                     context.createTransaction(transferAsset);
                 });
-                context.logInfoMessage("CONTRACT: done", new Object[0]);
+                context.logInfoMessage("CONTRACT: done");
                 return context.getResponse();
             }
         }
@@ -137,18 +140,16 @@ public class IgnisAssetLottery extends AbstractContract {
     public interface Params {
         @ContractSetupParameter
         default long priceIgnis() {
-            return 26L * ChildChain.IGNIS.ONE_COIN;
+            return 199L * ChildChain.IGNIS.ONE_COIN;
         }
 
         @ContractSetupParameter
         default long tarascaCutPerPack() {
-            return 6L * ChildChain.IGNIS.ONE_COIN;
+            return 100L * ChildChain.IGNIS.ONE_COIN;
         }
 
         @ContractSetupParameter
-        default String tarascaRs() {
-            return "ARDOR-UNG3-A3MG-W3D9-AUCV6";
-        }
+        default String tarascaRs() { return "ARDOR-9SJS-TS84-Q293-7J6TE"; }
 
         @ContractSetupParameter
         default int priceGiftz() {
@@ -162,12 +163,12 @@ public class IgnisAssetLottery extends AbstractContract {
 
         @ContractSetupParameter
         default String collectionRs() {
-            return "ARDOR-YDK2-LDGG-3QL8-3Z9JD";
+            return "ARDOR-4V3B-TVQA-Q6LF-GMH3T";
         }
 
         @ContractSetupParameter
         default String validCurrency() {
-            return "8633185858724739856";
+            return "9375231913536683768";
         }
     }
 }
