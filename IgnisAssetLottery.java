@@ -13,6 +13,7 @@ import nxt.addons.DelegatedContext;
 import nxt.addons.JA;
 import nxt.addons.JO;
 import nxt.addons.TransactionContext;
+import nxt.addons.ValidateChain;
 import nxt.blockchain.ChildChain;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.GetAccountAssetsCall;
@@ -25,7 +26,8 @@ import nxt.http.responses.TransactionResponse;
 public class IgnisAssetLottery extends AbstractContract {
     public IgnisAssetLottery() {
     }
-
+		
+	@ValidateChain(accept = {2})	
     public JO processTransaction(TransactionContext context) {
         if (context.notSameRecipient()) {
             return new JO();
@@ -140,12 +142,12 @@ public class IgnisAssetLottery extends AbstractContract {
     public interface Params {
         @ContractSetupParameter
         default long priceIgnis() {
-            return 199L * ChildChain.IGNIS.ONE_COIN;
+            return 99L * ChildChain.IGNIS.ONE_COIN;
         }
 
         @ContractSetupParameter
         default long tarascaCutPerPack() {
-            return 100L * ChildChain.IGNIS.ONE_COIN;
+            return 50L * ChildChain.IGNIS.ONE_COIN;
         }
 
         @ContractSetupParameter
