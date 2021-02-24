@@ -82,6 +82,7 @@ public class IgnisAssetLottery extends AbstractContract {
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
                 DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
 
+
                 Map<String, Integer> pack = new HashMap(numPacks * cardsPerPack);
 
                 for(int j = 0; j < numPacks; ++j) {
@@ -136,6 +137,11 @@ public class IgnisAssetLottery extends AbstractContract {
     }
 
     private void packCards(JO AccountAssets) {
+    }
+
+    private long hashToLong(byte[] hash) {
+        BigInteger bigInteger = new BigInteger(1, new byte[] {hash[7], hash[6], hash[5], hash[4], hash[3], hash[2], hash[1], hash[0]});
+        return bigInteger.longValue();
     }
 
     @ContractParametersProvider
