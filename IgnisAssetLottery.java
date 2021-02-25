@@ -1,8 +1,14 @@
 package com.jelurida.ardor.contracts;
 
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import nxt.crypto.Crypto;
 import nxt.util.Convert;
 import nxt.addons.AbstractContract;
 import nxt.addons.Contract;
@@ -13,7 +19,6 @@ import nxt.addons.DelegatedContext;
 import nxt.addons.JA;
 import nxt.addons.JO;
 import nxt.addons.TransactionContext;
-import nxt.addons.ValidateChain;
 import nxt.blockchain.ChildChain;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.GetAccountAssetsCall;
@@ -27,7 +32,6 @@ public class IgnisAssetLottery extends AbstractContract {
     public IgnisAssetLottery() {
     }
 		
-	@ValidateChain(accept = {2})	
     public JO processTransaction(TransactionContext context) {
         if (context.notSameRecipient()) {
             return new JO();
@@ -76,7 +80,23 @@ public class IgnisAssetLottery extends AbstractContract {
                 JA schachtel = new JA(cAssets.get("assets"));
                 JA collectionAssets = new JA(schachtel.getObject(0));
 
-                context.initRandom(context.getTransaction().getTransactionId());
+                JO contractParameters = context.getContractRunnerConfigParams(getClass().getSimpleName());
+
+                String secretForRandomString = "0";
+
+                if(contractParameters.isExist("secretForRandomString")) {
+                    secretForRandomString = contractParameters.getString("secretForRandomString");
+                }
+
+                MessageDigest digest = Crypto.sha256();
+
+                digest.update(secretForRandomString.getBytes(StandardCharsets.UTF_8));
+                digest.update(ByteBuffer.allocate(Long.BYTES).putLong(context.getTransaction().getBlockId()).array());
+                digest.update(context.getTransaction().getFullHash());
+
+                // random seed derived from long from HASH(secretForRandomString | blockId | transactionFullHash)
+                context.initRandom(longLsbFromBytes(digest.digest()));
+
                 Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
                 ContractAndSetupParameters contractAndParameters = context.loadContract("DistributedRandomNumberGenerator");
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
@@ -131,7 +151,12 @@ public class IgnisAssetLottery extends AbstractContract {
     }
 
     private int isIgnisPayment(TransactionResponse response, long priceIgnis) {
-        long amount = response.getAmount();
+        long amount = 0;
+
+        if(response.getChainId() == 2) {
+            amount = response.getAmount();
+        }
+
         long boughtPacks = amount / priceIgnis;
         return boughtPacks >= 1L ? (int)boughtPacks : 0;
     }
@@ -139,9 +164,9 @@ public class IgnisAssetLottery extends AbstractContract {
     private void packCards(JO AccountAssets) {
     }
 
-    private long hashToLong(byte[] hash) {
-        BigInteger bigInteger = new BigInteger(1, new byte[] {hash[7], hash[6], hash[5], hash[4], hash[3], hash[2], hash[1], hash[0]});
-        return bigInteger.longValue();
+    public static long longLsbFromBytes(byte[] bytes) {
+        BigInteger bi = new BigInteger(1, new byte[] {bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]});
+        return bi.longValue();
     }
 
     @ContractParametersProvider
