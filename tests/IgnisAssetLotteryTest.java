@@ -16,31 +16,34 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
     @Test
     public void buyMultiPacksIgnis() {
-        Logger.logInfoMessage("TEST buyMultiPacksIgnis()");
+        Logger.logInfoMessage("TEST: buyMultiPacksIgnis(): Start test");
 
         int collectionSize = TarascaTester.collectionSize();
         int cardsPerPack = TarascaTester.cardsPerPack();
 
-        initCurrency(CHUCK.getSecretPhrase(), "TOLLA", "Tarascolla", "exchangeable,useful", 100000);
-        initCollection(CHUCK.getSecretPhrase(), collectionSize);
+        initCollectionCurrency();
+        initCollection(collectionSize);
         generateBlock();
 
-        JO currencyInfo = getCollectionCurrency(CHUCK.getRsAccount());
+        JO currencyInfo = getCollectionCurrency();
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
         setupParams.put("priceIgnis", TarascaTester.priceIgnis());
         setupParams.put("cardsPerPack", TarascaTester.cardsPerPack());
         setupParams.put("validCurrency", currencyId);
-        setupParams.put("collectionRs", CHUCK.getRsAccount());
+        setupParams.put("collectionRs", ALICE.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
         generateBlock();
 
-        JA collectionAssets = TarascaTester.getCollectionAssets(CHUCK.getRsAccount());
-        TarascaTester.sendAssets(collectionAssets, 300, CHUCK.getSecretPhrase(), ALICE.getRsAccount(), "to Bob");
+        Logger.logInfoMessage("TEST: buyMultiPacksIgnis(): Contracts deployed");
 
+        //SJA collectionAssets = TarascaTester.getCollectionAssets();
+
+
+        Logger.logInfoMessage("TEST: buyMultiPacksIgnis(): Start playing");
         generateBlock();
         buyPacksIgnis(2, contractName, DAVE.getSecretPhrase());
         generateBlock();
@@ -48,6 +51,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         generateBlock();
         generateBlock();
 
+        Logger.logInfoMessage("TEST: buyMultiPacksIgnis(): Evaluation of results");
         // Check bob bought a pack.
         JO bobsResponse = getAccountAssets(BOB.getRsAccount());
         JA bobsAssets = new JA(bobsResponse.get("accountAssets")); // Need to unbox another array
@@ -66,48 +70,50 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
     @Test
     public void buyMultiPacksGiftz() {
-        Logger.logDebugMessage("Test buyMultiPacksIgnis()");
+        Logger.logDebugMessage("TEST: buyMultiPacksGiftz(): Start");
 
         int collectionSize = TarascaTester.collectionSize();
         int cardsPerPack = TarascaTester.cardsPerPack();
 
-        initCurrency(CHUCK.getSecretPhrase(), "TOLLA", "Tarascolla", "exchangeable,useful", 100000);
-        initCollection(CHUCK.getSecretPhrase(), collectionSize);
+        initCollectionCurrency();
+        initCollection(collectionSize);
         generateBlock();
 
-        JO currencyInfo = getCollectionCurrency(CHUCK.getRsAccount());
+        JO currencyInfo = getCollectionCurrency();
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
         setupParams.put("priceIgnis", TarascaTester.priceIgnis());
         setupParams.put("cardsPerPack", cardsPerPack);
         setupParams.put("validCurrency", currencyId);
-        setupParams.put("collectionRs", CHUCK.getRsAccount());
+        setupParams.put("collectionRs", ALICE.getRsAccount());
+        //setupParams.put("tarascaRs", CHUCK.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
         generateBlock();
 
-
-        JA collectionAssets = TarascaTester.getCollectionAssets(CHUCK.getRsAccount());
-        TarascaTester.sendAssets(collectionAssets,300,CHUCK.getSecretPhrase(),ALICE.getRsAccount(),"to Bob");
-        JO coin = TarascaTester.getCollectionCurrency(CHUCK.getRsAccount());
+        Logger.logDebugMessage("TEST: buyMultiPacksGiftz(): Contracts deployed");
+        //JA collectionAssets = TarascaTester.getCollectionAssets();
+        //TarascaTester.sendAssets(collectionAssets,300,CHUCK.getSecretPhrase(),ALICE.getRsAccount(),"to Bob");
+        JO coin = TarascaTester.getCollectionCurrency();
         String curId = coin.getString("currency");
-        TarascaTester.sendCoin(curId,1000,BOB.getRsAccount(),CHUCK.getSecretPhrase());
-        TarascaTester.sendCoin(curId,1000,DAVE.getRsAccount(),CHUCK.getSecretPhrase());
+        TarascaTester.sendCoin(curId,1000,BOB.getRsAccount(),ALICE.getSecretPhrase());
+        TarascaTester.sendCoin(curId,1000,DAVE.getRsAccount(),ALICE.getSecretPhrase());
 
         generateBlock();
         generateBlock();
 
+        Logger.logDebugMessage("TEST: buyMultiPacksGiftz(): Start playing");
         // Now the contract runner has cards to sell. Everything ready for the test.
         JO resGiftzBob = buyPacksGiftz(1,contractName,BOB.getSecretPhrase());
         generateBlock();
         JO resGiftzDave = buyPacksGiftz(2,contractName,DAVE.getSecretPhrase());
         generateBlock();
         generateBlock();
-        generateBlock();
-        generateBlock();
 
+
+        Logger.logDebugMessage("TEST: buyMultiPacksGiftz(): Evaluate results");
         JO bobsResponse  = getAccountAssets(BOB.getRsAccount());
         JO davesResponse = getAccountAssets(DAVE.getRsAccount());
 
