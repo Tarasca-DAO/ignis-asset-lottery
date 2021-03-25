@@ -29,10 +29,10 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
-        setupParams.put("priceIgnis", TarascaTester.priceIgnis());
-        setupParams.put("cardsPerPack", TarascaTester.cardsPerPack());
-        setupParams.put("validCurrency", currencyId);
-        setupParams.put("collectionRs", ALICE.getRsAccount());
+        setupParams.put("priceIgn", TarascaTester.priceIgnis());
+        setupParams.put("cardsPp", TarascaTester.cardsPerPack());
+        setupParams.put("valCur", currencyId);
+        setupParams.put("col", ALICE.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
@@ -83,10 +83,10 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
-        setupParams.put("priceIgnis", TarascaTester.priceIgnis());
-        setupParams.put("cardsPerPack", cardsPerPack);
-        setupParams.put("validCurrency", currencyId);
-        setupParams.put("collectionRs", ALICE.getRsAccount());
+        setupParams.put("priceIgn", TarascaTester.priceIgnis());
+        setupParams.put("cardsPp", cardsPerPack);
+        setupParams.put("valCur", currencyId);
+        setupParams.put("col", ALICE.getRsAccount());
         //setupParams.put("tarascaRs", CHUCK.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);

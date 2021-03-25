@@ -18,7 +18,7 @@ import static nxt.blockchain.ChildChain.IGNIS;
 
 public class TarascaTester {
 
-    public static long priceIgnis() {return 26*IGNIS.ONE_COIN;}
+    public static long priceIgnis() {return 99;}
     public static long priceGiftz() {return 1;}
     public static int cardsPerPack() {return 3;}
     public static int collectionSize() {return 8;}
@@ -33,7 +33,8 @@ public class TarascaTester {
     public static JA getCollectionAssets(){
         JO response = GetAssetsByIssuerCall.create().param("account",ALICE.getRsAccount()).call();
         JA outerArray = response.getArray("assets");
-        return new JA(outerArray.getArray(0));
+        JA assets = outerArray.getArray(0);
+        return assets;
     }
 
 
@@ -54,12 +55,13 @@ public class TarascaTester {
     }
 
     public static void initCollection(int numAssets){
+        Logger.logMessage("TarascaTester.initCollection(): from account: "+ ALICE.getRsAccount());
         for (int i=0; i<numAssets; i++){
             int q = 10000;
             if (i==0 | i==1){
                 q = 2500;
             }
-            Logger.logMessage("create Asset: "+i);
+            Logger.logMessage("TarascaTester.initCollection(): create Asset: Asset"+i);
             String name = String.format("Asset%s", i);
             String description = String.format("Asset Description %s", i);
             JO response = IssueAssetCall.create(IGNIS.getId()).
@@ -68,9 +70,10 @@ public class TarascaTester {
                     name(name).
                     quantityQNT(q).
                     decimals(0).
-                    feeNQT(IGNIS.ONE_COIN*500).
+                    feeNQT(IGNIS.ONE_COIN*100).
                     call();
             generateBlock();
+            //int j = i; // this is useless
         }
     }
 
@@ -93,14 +96,14 @@ public class TarascaTester {
             //JO asset = new JO(assetObj);
             String assetId = (String) asset.getString("asset");
             String msg = "send Asset: " + assetId;
-            Logger.logMessage(msg);
+            //Logger.logMessage(msg);
             JO response = TransferAssetCall.create(IGNIS.getId()).
                     asset(assetId).
                     recipient(receiverRs).
                     quantityQNT(quantityQNT).
                     secretPhrase(secretPhrase).
                     message(msg).
-                    feeNQT(IGNIS.ONE_COIN).
+                    feeNQT(IGNIS.ONE_COIN*100).
                     call();
         }
     }
@@ -127,7 +130,7 @@ public class TarascaTester {
         String message = messageJson.toJSONString();
         JO response = SendMoneyCall.create(IGNIS.getId()).secretPhrase(secretPhrase).
                 recipient(ALICE.getRsAccount()).
-                amountNQT(numPacks*TarascaTester.priceIgnis()).
+                amountNQT(numPacks*TarascaTester.priceIgnis()*IGNIS.ONE_COIN).
                 messageIsPrunable(true).
                 message(message).feeNQT(IGNIS.ONE_COIN).call();
         BlockchainTest.generateBlock();

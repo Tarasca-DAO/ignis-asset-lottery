@@ -37,13 +37,13 @@ public class IgnisAssetLottery extends AbstractContract {
             return new JO();
         } else {
             IgnisAssetLottery.Params params = (IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class);
-            long priceIgnis = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceIgnis();
-            long tarascaCutPerPack = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tarascaCutPerPack();
-            String tarascaRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tarascaRs();
-            int priceGiftz = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceGiftz();
-            String validCurrency = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).validCurrency();
-            int cardsPerPack = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).cardsPerPack();
-            String collectionRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).collectionRs();
+            long priceIgnis = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceIgn()*ChildChain.IGNIS.ONE_COIN;
+            long tarascaCut = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tdaoCut()*ChildChain.IGNIS.ONE_COIN;
+            String tarascaRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tdao();
+            int priceGiftz = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceGif();
+            String validCurrency = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).valCur();
+            int cardsPerPack = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).cardsPp();
+            String collectionRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).col();
             String accountRs = context.getAccountRs();
             int maxPacks = 9 / cardsPerPack;
             int chainId = 2;
@@ -66,9 +66,9 @@ public class IgnisAssetLottery extends AbstractContract {
                 }
 
                 if (payCut) {
-                    long tarascaCut = tarascaCutPerPack * (long)numPacks;
-                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCut / ChildChain.IGNIS.ONE_COIN, tarascaRs,chainId);
-                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCut);
+                    long tarascaCutTotal = tarascaCut * (long)numPacks;
+                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCutTotal / ChildChain.IGNIS.ONE_COIN, tarascaRs,chainId);
+                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal);
                     context.createTransaction(sendMoneyCall);
                 } else {
                     context.logInfoMessage("CONTRACT: not paying Tarasca any Ignis");
@@ -172,35 +172,35 @@ public class IgnisAssetLottery extends AbstractContract {
     @ContractParametersProvider
     public interface Params {
         @ContractSetupParameter
-        default long priceIgnis() {
-            return 99L * ChildChain.IGNIS.ONE_COIN;
+        default long priceIgn() {
+            return 99L;
         }
 
         @ContractSetupParameter
-        default long tarascaCutPerPack() {
-            return 50L * ChildChain.IGNIS.ONE_COIN;
+        default long tdaoCut() {
+            return 50L;
         }
 
         @ContractSetupParameter
-        default String tarascaRs() { return "ARDOR-9SJS-TS84-Q293-7J6TE"; }
+        default String tdao() { return "ARDOR-9SJS-TS84-Q293-7J6TE"; }
 
         @ContractSetupParameter
-        default int priceGiftz() {
+        default int priceGif() {
             return 1;
         }
 
         @ContractSetupParameter
-        default int cardsPerPack() {
+        default int cardsPp() {
             return 3;
         }
 
         @ContractSetupParameter
-        default String collectionRs() {
+        default String col() {
             return "ARDOR-4V3B-TVQA-Q6LF-GMH3T";
         }
 
         @ContractSetupParameter
-        default String validCurrency() {
+        default String valCur() {
             return "9375231913536683768";
         }
     }
