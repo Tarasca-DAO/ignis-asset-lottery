@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import nxt.crypto.Crypto;
@@ -76,8 +77,8 @@ public class IgnisAssetLottery extends AbstractContract {
 
                 JO accAssets = GetAccountAssetsCall.create().account(accountRs).call();
                 JA accountAssets = accAssets.getArray("accountAssets");
-                JO cAssets = GetAssetsByIssuerCall.create().account(new String[]{collectionRs}).call();
-                JA schachtel = new JA(cAssets.get("assets"));
+                JO cAssets = GetAssetsByIssuerCall.create().account(collectionRs).call();
+                JA schachtel = cAssets.getArray("assets");
                 JA collectionAssets = new JA(schachtel.getObject(0));
 
                 JO contractParameters = context.getContractRunnerConfigParams(getClass().getSimpleName());
@@ -128,12 +129,45 @@ public class IgnisAssetLottery extends AbstractContract {
     }
 
     private Map<String, Long> getAssetsForDraw(JA accountAssets, JA collectionAssets) {
-        Map<String, Long> assets = (Map)collectionAssets.objects().stream().collect(Collectors.toMap((asset) -> {
-            return asset.getString("asset");
-        }, (asset) -> {
-            return asset.getLong("quantityQNT");
-        }));
-        return assets;
+        Map<String, Long> assetWeights = collectionAssets.objects().stream().collect(
+                Collectors.toMap(
+                        (asset) -> {
+                            return asset.getString("asset");
+                        }, (asset) -> {
+                            // base weight on rarity attribute of the card description:
+                            JO cardDescription = JO.parse(asset.getString("description"));
+                            String rarity = cardDescription.getString("rarity");
+                            Long weight = 0L;
+                            switch (rarity) {
+                                case "very rare":
+                                    weight = 20000L;
+                                    break;
+                                case "rare":
+                                    weight = 50000L;
+                                    break;
+                                case "common":
+                                    weight = 100000L;
+                                    break;
+                                default:
+                                    weight = 100000L;
+                                    break;
+                            }
+
+                            // make sure that assetID is available in the contract account. the asset ID should be unique (list of size 1)
+                            List<JO> aAssets = accountAssets.objects().stream().filter(
+                                    a -> (asset.getString("asset").equals(a.getString("asset")) )).collect(Collectors.toList());
+                            boolean isAvailable = aAssets.get(0).getLong("quantityQNT") > 0;
+
+                            if (isAvailable) {
+                              return weight;
+                            }
+                            else {
+                              return 0L;
+                            }
+                        }
+                )
+        );
+        return assetWeights;
     }
 
     private int isGiftzPayment(TransactionResponse response, String currency, int priceGiftz) {
