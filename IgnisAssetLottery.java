@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import nxt.crypto.Crypto;
-import nxt.util.Convert;
 import nxt.addons.AbstractContract;
 import nxt.addons.Contract;
 import nxt.addons.ContractAndSetupParameters;
@@ -30,21 +29,24 @@ import nxt.http.responses.TransactionResponse;
 
 
 public class IgnisAssetLottery extends AbstractContract {
+    
     public IgnisAssetLottery() {
     }
-		
+
+
     public JO processTransaction(TransactionContext context) {
         if (context.notSameRecipient()) {
             return new JO();
         } else {
-            IgnisAssetLottery.Params params = (IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class);
-            long priceIgnis = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceIgn()*ChildChain.IGNIS.ONE_COIN;
-            long tarascaCut = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tdaoCut()*ChildChain.IGNIS.ONE_COIN;
-            String tarascaRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).tdao();
-            int priceGiftz = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).priceGif();
-            String validCurrency = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).valCur();
-            int cardsPerPack = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).cardsPp();
-            String collectionRs = ((IgnisAssetLottery.Params)context.getParams(IgnisAssetLottery.Params.class)).col();
+            IgnisAssetLottery.Params params = context.getParams(IgnisAssetLottery.Params.class);
+            long priceIgnis = params.priceIgn()*ChildChain.IGNIS.ONE_COIN;
+            long tarascaCut = params.tdaoCut()*ChildChain.IGNIS.ONE_COIN;
+            String tarascaRs = params.tdao();
+            int priceGiftz = params.priceGif();
+            String validCurrency = params.valCur();
+            int cardsPerPack = params.cardsPp();
+            String collectionRs = params.col();
+
             String accountRs = context.getAccountRs();
             int maxPacks = 9 / cardsPerPack;
             int chainId = 2;
@@ -108,10 +110,10 @@ public class IgnisAssetLottery extends AbstractContract {
 
                 for(int j = 0; j < numPacks; ++j) {
                     for(int i = 0; i < cardsPerPack; ++i) {
-                        String asset = (String)distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
-                        Object curValue = pack.putIfAbsent(asset, 1);
+                        String asset = distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
+                        Integer curValue = pack.putIfAbsent(asset, 1);
                         if (curValue != null) {
-                            pack.put(asset, (Integer)curValue + 1);
+                            pack.put(asset, curValue + 1);
                         }
 
                         context.logInfoMessage("CONTRACT: selected asset: %s", asset);
@@ -119,7 +121,7 @@ public class IgnisAssetLottery extends AbstractContract {
                 }
 
                 pack.forEach((assetx, quantity) -> {
-                    TransferAssetCall transferAsset = ((TransferAssetCall)TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs())).asset(assetx).quantityQNT((long)quantity);
+                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity);
                     context.createTransaction(transferAsset);
                 });
                 context.logInfoMessage("CONTRACT: done");
@@ -127,6 +129,7 @@ public class IgnisAssetLottery extends AbstractContract {
             }
         }
     }
+
 
     private Map<String, Long> getAssetsForDraw(JA accountAssets, JA collectionAssets) {
         Map<String, Long> assetWeights = collectionAssets.objects().stream().collect(
@@ -170,6 +173,7 @@ public class IgnisAssetLottery extends AbstractContract {
         return assetWeights;
     }
 
+
     private int isGiftzPayment(TransactionResponse response, String currency, int priceGiftz) {
         TransactionType Type = response.getTransactionType();
         if (Type.getType() == 5 & Type.getSubtype() == 3) {
@@ -184,6 +188,7 @@ public class IgnisAssetLottery extends AbstractContract {
         return 0;
     }
 
+
     private int isIgnisPayment(TransactionResponse response, long priceIgnis) {
         long amount = 0;
 
@@ -195,13 +200,12 @@ public class IgnisAssetLottery extends AbstractContract {
         return boughtPacks >= 1L ? (int)boughtPacks : 0;
     }
 
-    private void packCards(JO AccountAssets) {
-    }
 
     public static long longLsbFromBytes(byte[] bytes) {
         BigInteger bi = new BigInteger(1, new byte[] {bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]});
         return bi.longValue();
     }
+
 
     @ContractParametersProvider
     public interface Params {
