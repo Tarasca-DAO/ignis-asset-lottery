@@ -29,7 +29,7 @@ import nxt.http.responses.TransactionResponse;
 
 
 public class IgnisAssetLottery extends AbstractContract {
-    
+
     public IgnisAssetLottery() {
     }
 
@@ -71,7 +71,10 @@ public class IgnisAssetLottery extends AbstractContract {
                 if (payCut) {
                     long tarascaCutTotal = tarascaCut * (long)numPacks;
                     context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCutTotal / ChildChain.IGNIS.ONE_COIN, tarascaRs,chainId);
-                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal);
+                    JO message = new JO();
+                    message.put("triggerTransaction",context.getTransaction().getTransactionId());
+                    message.put("reason","payment");
+                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
                     context.createTransaction(sendMoneyCall);
                 } else {
                     context.logInfoMessage("CONTRACT: not paying Tarasca any Ignis");
@@ -120,8 +123,12 @@ public class IgnisAssetLottery extends AbstractContract {
                     }
                 }
 
+                JO message = new JO();
+                message.put("triggerTransaction",context.getTransaction().getTransactionId());
+                message.put("reason","boosterPack");
+
                 pack.forEach((assetx, quantity) -> {
-                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity);
+                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
                     context.createTransaction(transferAsset);
                 });
                 context.logInfoMessage("CONTRACT: done");
