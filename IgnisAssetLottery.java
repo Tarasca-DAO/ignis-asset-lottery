@@ -150,16 +150,16 @@ public class IgnisAssetLottery extends AbstractContract {
                             Long weight = 0L;
                             switch (rarity) {
                                 case "very rare":
-                                    weight = 20000L;
+                                    weight = 2500L;
                                     break;
                                 case "rare":
-                                    weight = 50000L;
+                                    weight = 5000L;
                                     break;
                                 case "common":
-                                    weight = 100000L;
+                                    weight = 10000L;
                                     break;
                                 default:
-                                    weight = 100000L;
+                                    weight = 10000L;
                                     break;
                             }
 
