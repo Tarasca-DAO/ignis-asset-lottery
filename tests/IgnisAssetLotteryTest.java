@@ -12,7 +12,6 @@ import static com.jelurida.ardor.contracts.TarascaTester.*;
 
 public class IgnisAssetLotteryTest extends AbstractContractTest {
 
-    // CHUCK is the collection account.
 
     @Test
     public void buyMultiPacksIgnis() {
@@ -29,10 +28,10 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
-        setupParams.put("priceIgn", TarascaTester.priceIgnis());
-        setupParams.put("cardsPp", TarascaTester.cardsPerPack());
+        setupParams.put("tdao", RIKER.getRsAccount());
+        setupParams.put("tcard", RIKER.getRsAccount());
+        setupParams.put("col", ALICE.getRsAccount()); // collection equals contract runner
         setupParams.put("valCur", currencyId);
-        setupParams.put("col", ALICE.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
@@ -61,7 +60,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         JO davesResponse = getAccountAssets(DAVE.getRsAccount());
         JA davesAssets = new JA(davesResponse.get("accountAssets")); // Need to unbox another array
         int numDaves = davesAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
-        ;
+
 
         Logger.logInfoMessage("TEST buyMultiPacksIgnis() results: numBobs: %d, numDaves: %d",numBobs,numDaves);
         Assert.assertTrue(numBobs == 1 * cardsPerPack);
@@ -83,10 +82,11 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         String currencyId = currencyInfo.getString("currency");
 
         JO setupParams = new JO();
-        setupParams.put("priceIgn", TarascaTester.priceIgnis());
-        setupParams.put("cardsPp", cardsPerPack);
+        setupParams.put("tdao", RIKER.getRsAccount());
+        setupParams.put("tcard", RIKER.getRsAccount());
+        setupParams.put("col", ALICE.getRsAccount()); // collection equals contract runner
         setupParams.put("valCur", currencyId);
-        setupParams.put("col", ALICE.getRsAccount());
+
         //setupParams.put("tarascaRs", CHUCK.getRsAccount());
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
@@ -130,6 +130,58 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         Assert.assertTrue(numDaves== (long) 2*cardsPerPack);
     }
 
+    @Test
+    public void maxTransactionLimits() {
+        Logger.logInfoMessage("TEST: maxTransactionLimits(): Start test");
 
+        int collectionSize = TarascaTester.collectionSize();
+        int cardsPerPack = TarascaTester.cardsPerPack();
+
+        initCollectionCurrency();
+        initCollection(collectionSize);
+        generateBlock();
+
+        JO currencyInfo = getCollectionCurrency();
+        String currencyId = currencyInfo.getString("currency");
+
+        JO setupParams = new JO();
+        setupParams.put("tdao", RIKER.getRsAccount());
+        setupParams.put("tcard", RIKER.getRsAccount());
+        setupParams.put("col", ALICE.getRsAccount()); // collection equals contract runner
+        setupParams.put("valCur", currencyId);
+
+        String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
+        ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
+        generateBlock();
+
+        Logger.logInfoMessage("TEST: maxTransactionLimits(): Contracts deployed");
+
+        //SJA collectionAssets = TarascaTester.getCollectionAssets();
+
+
+        Logger.logInfoMessage("TEST: maxTransactionLimits(): Start playing");
+        generateBlock();
+        buyPacksIgnis(5, contractName, DAVE.getSecretPhrase());
+        generateBlock();
+        buyPacksIgnis(1, contractName, BOB.getSecretPhrase());
+        generateBlock();
+        generateBlock();
+
+        Logger.logInfoMessage("TEST: maxTransactionLimits(): Evaluation of results");
+        // Check bob bought a pack.
+        JO bobsResponse = getAccountAssets(BOB.getRsAccount());
+        JA bobsAssets = new JA(bobsResponse.get("accountAssets")); // Need to unbox another array
+        int numBobs = bobsAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
+
+        // Check dave bought 5 packs
+        JO davesResponse = getAccountAssets(DAVE.getRsAccount());
+        JA davesAssets = new JA(davesResponse.get("accountAssets")); // Need to unbox another array
+        int numDaves = davesAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
+
+
+        Logger.logInfoMessage("TEST maxTransactionLimits() results: received assets: numBobs: %d, numDaves: %d",numBobs,numDaves);
+        Assert.assertTrue(numBobs == 1 * cardsPerPack);
+        Assert.assertTrue(numDaves == 5 * cardsPerPack);
+    }
 }
 

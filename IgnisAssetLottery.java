@@ -9,16 +9,8 @@ import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import nxt.addons.*;
 import nxt.crypto.Crypto;
-import nxt.addons.AbstractContract;
-import nxt.addons.Contract;
-import nxt.addons.ContractAndSetupParameters;
-import nxt.addons.ContractParametersProvider;
-import nxt.addons.ContractSetupParameter;
-import nxt.addons.DelegatedContext;
-import nxt.addons.JA;
-import nxt.addons.JO;
-import nxt.addons.TransactionContext;
 import nxt.blockchain.ChildChain;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.GetAccountAssetsCall;
@@ -27,29 +19,36 @@ import nxt.http.callers.SendMoneyCall;
 import nxt.http.callers.TransferAssetCall;
 import nxt.http.responses.TransactionResponse;
 
+import static nxt.blockchain.ChildChain.IGNIS;
+
 
 public class IgnisAssetLottery extends AbstractContract {
 
-    public IgnisAssetLottery() {
-    }
-
-
+    @ValidateContractRunnerIsRecipient
+    @ValidateChain(accept = 2)
     public JO processTransaction(TransactionContext context) {
         if (context.notSameRecipient()) {
             return new JO();
         } else {
-            IgnisAssetLottery.Params params = context.getParams(IgnisAssetLottery.Params.class);
-            long priceIgnis = params.priceIgn()*ChildChain.IGNIS.ONE_COIN;
-            long tarascaCut = params.tdaoCut()*ChildChain.IGNIS.ONE_COIN;
-            String tarascaRs = params.tdao();
-            int priceGiftz = params.priceGif();
-            String validCurrency = params.valCur();
-            int cardsPerPack = params.cardsPp();
-            String collectionRs = params.col();
+            IgnisAssetLottery.ContractParams contractParams = context.getParams(IgnisAssetLottery.ContractParams.class);
+            String tarascaRs = contractParams.tdao();
+            String cardRs = contractParams.tcard();
+            String validCurrency = contractParams.valCur();
+            String collectionRs = contractParams.col();// context.getAccountRs();
 
+            IgnisAssetLottery.RunnerParams runnerParams = context.getParams(IgnisAssetLottery.RunnerParams.class);
+            long priceIgnis = runnerParams.priceIgnis()*IGNIS.ONE_COIN;
+            long tarascaCut = runnerParams.tarascaCut()*IGNIS.ONE_COIN;
+            long cardCut = runnerParams.cardCut()*IGNIS.ONE_COIN;
+
+            int priceGiftz = runnerParams.priceGiftz();
+            int cardsPerPack = runnerParams.cardsPerPack();
+            int maxPacks = runnerParams.maxPacks();
+
+            // other parameters:
             String accountRs = context.getAccountRs();
-            int maxPacks = 9 / cardsPerPack;
             int chainId = 2;
+
             boolean payCut = false;
             TransactionResponse triggerTransaction = context.getTransaction();
             int numPacks = this.isGiftzPayment(triggerTransaction, validCurrency, priceGiftz);
@@ -70,12 +69,18 @@ public class IgnisAssetLottery extends AbstractContract {
 
                 if (payCut) {
                     long tarascaCutTotal = tarascaCut * (long)numPacks;
-                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCutTotal / ChildChain.IGNIS.ONE_COIN, tarascaRs,chainId);
+                    context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCutTotal / IGNIS.ONE_COIN, tarascaRs,chainId);
                     JO message = new JO();
                     message.put("triggerTransaction",context.getTransaction().getTransactionId());
                     message.put("reason","payment");
-                    SendMoneyCall sendMoneyCall = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
-                    context.createTransaction(sendMoneyCall);
+                    SendMoneyCall sendMoneyTarasca = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    context.createTransaction(sendMoneyTarasca);
+
+                    long cardCutTotal = cardCut * (long)numPacks;
+                    context.logInfoMessage("CONTRACT: paying Tarasca Card holders %d Ignis, to %s, on chain %d", cardCutTotal / IGNIS.ONE_COIN, cardRs,chainId);
+                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    context.createTransaction(sendMoneyCards);
+
                 } else {
                     context.logInfoMessage("CONTRACT: not paying Tarasca any Ignis");
                 }
@@ -215,29 +220,13 @@ public class IgnisAssetLottery extends AbstractContract {
 
 
     @ContractParametersProvider
-    public interface Params {
-        @ContractSetupParameter
-        default long priceIgn() {
-            return 99L;
-        }
+    public interface ContractParams {
 
         @ContractSetupParameter
-        default long tdaoCut() {
-            return 50L;
-        }
+        default String tdao() { return "ARDOR-WDYX-3Q5N-K4HS-CUTKE"; }
 
         @ContractSetupParameter
-        default String tdao() { return "ARDOR-9SJS-TS84-Q293-7J6TE"; }
-
-        @ContractSetupParameter
-        default int priceGif() {
-            return 1;
-        }
-
-        @ContractSetupParameter
-        default int cardsPp() {
-            return 3;
-        }
+        default String tcard() { return "ARDOR-5NCL-DRBZ-XBWF-DDN5T"; }
 
         @ContractSetupParameter
         default String col() {
@@ -248,5 +237,27 @@ public class IgnisAssetLottery extends AbstractContract {
         default String valCur() {
             return "9375231913536683768";
         }
+    }
+
+    @ContractParametersProvider
+    public interface RunnerParams {
+
+        @ContractSetupParameter
+        default long priceIgnis() { return 99L; }
+
+        @ContractSetupParameter
+        default long tarascaCut() { return 40L; }
+
+        @ContractSetupParameter
+        default long cardCut() { return 10L; }
+
+        @ContractSetupParameter
+        default int priceGiftz() { return 1; }
+
+        @ContractSetupParameter
+        default int cardsPerPack() { return 3; }
+
+        @ContractSetupParameter
+        default int maxPacks(){ return 5; }
     }
 }
