@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import nxt.addons.*;
 import nxt.crypto.Crypto;
-import nxt.blockchain.ChildChain;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.GetAccountAssetsCall;
 import nxt.http.callers.GetAssetsByIssuerCall;
@@ -78,7 +77,7 @@ public class IgnisAssetLottery extends AbstractContract {
 
                     long cardCutTotal = cardCut * (long)numPacks;
                     context.logInfoMessage("CONTRACT: paying Tarasca Card holders %d Ignis, to %s, on chain %d", cardCutTotal / IGNIS.ONE_COIN, cardRs,chainId);
-                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(cardRs).amountNQT(cardCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
                     context.createTransaction(sendMoneyCards);
 
                 } else {
