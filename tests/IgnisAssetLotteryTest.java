@@ -1,11 +1,14 @@
 package com.jelurida.ardor.contracts;
 
+import nxt.account.PaymentTransactionType;
 import nxt.addons.JA;
 import nxt.addons.JO;
+import nxt.blockchain.ChildTransaction;
 import nxt.util.Logger;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.jelurida.ardor.contracts.TarascaTester.*;
@@ -182,6 +185,52 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         Logger.logInfoMessage("TEST maxTransactionLimits() results: received assets: numBobs: %d, numDaves: %d",numBobs,numDaves);
         Assert.assertTrue(numBobs == 1 * cardsPerPack);
         Assert.assertTrue(numDaves == 5 * cardsPerPack);
+    }
+
+    @Test
+    public void confirmSplitPayment() {
+        Logger.logDebugMessage("TEST: confirmSplitPayment(): Start");
+
+        int collectionSize = TarascaTester.collectionSize();
+        int cardsPerPack = TarascaTester.cardsPerPack();
+
+        initCollectionCurrency();
+        initCollection(collectionSize);
+        generateBlock();
+
+        JO currencyInfo = getCollectionCurrency();
+        String currencyId = currencyInfo.getString("currency");
+
+        JO setupParams = new JO();
+        setupParams.put("tdao", BOB.getRsAccount());
+        setupParams.put("tcard", CHUCK.getRsAccount());
+        setupParams.put("col", ALICE.getRsAccount()); // collection equals contract runner
+        setupParams.put("valCur", currencyId);
+
+
+        String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
+        ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
+        generateBlock();
+
+        Logger.logDebugMessage("TEST: confirmSplitPayment(): Contracts deployed, start playing");
+        JO resGiftzDave = buyPacksIgnis(1,contractName,DAVE.getSecretPhrase());
+        generateBlock();
+
+        Logger.logDebugMessage("TEST: confirmSplitPayment(): Evaluate results");
+        List<? extends ChildTransaction> transactions = getLastBlockChildTransactions(2);
+
+        Assert.assertEquals(5,transactions.size());
+        List<? extends ChildTransaction> payments =  transactions.stream()
+                .filter( t -> (t.getType()== PaymentTransactionType.ORDINARY))
+                .collect(Collectors.toList());
+        Assert.assertEquals(2,payments.size());
+
+        List<? extends ChildTransaction> tarascapayment =  payments.stream().filter(t -> (t.getRecipientId() == BOB.getId())).collect(Collectors.toList());
+        Assert.assertEquals(1,tarascapayment.size());
+        List<? extends ChildTransaction> cardpayment =  payments.stream().filter(t -> (t.getRecipientId() == CHUCK.getId())).collect(Collectors.toList());
+        Assert.assertEquals(1,cardpayment.size());
+
+        Logger.logDebugMessage("TEST: confirmSplitPayment(): Done");
     }
 }
 
