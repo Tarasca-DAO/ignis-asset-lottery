@@ -43,6 +43,7 @@ public class IgnisAssetLottery extends AbstractContract {
             int priceGiftz = runnerParams.priceGiftz();
             int cardsPerPack = runnerParams.cardsPerPack();
             int maxPacks = runnerParams.maxPacks();
+            int deadline = runnerParams.deadline();
 
             // other parameters:
             String accountRs = context.getAccountRs();
@@ -72,12 +73,12 @@ public class IgnisAssetLottery extends AbstractContract {
                     JO message = new JO();
                     message.put("triggerTransaction",context.getTransaction().getTransactionId());
                     message.put("reason","payment");
-                    SendMoneyCall sendMoneyTarasca = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    SendMoneyCall sendMoneyTarasca = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
                     context.createTransaction(sendMoneyTarasca);
 
                     long cardCutTotal = cardCut * (long)numPacks;
                     context.logInfoMessage("CONTRACT: paying Tarasca Card holders %d Ignis, to %s, on chain %d", cardCutTotal / IGNIS.ONE_COIN, cardRs,chainId);
-                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(cardRs).amountNQT(cardCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(cardRs).amountNQT(cardCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
                     context.createTransaction(sendMoneyCards);
 
                 } else {
@@ -132,7 +133,7 @@ public class IgnisAssetLottery extends AbstractContract {
                 message.put("reason","boosterPack");
 
                 pack.forEach((assetx, quantity) -> {
-                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true);
+                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
                     context.createTransaction(transferAsset);
                 });
                 context.logInfoMessage("CONTRACT: done");
@@ -258,5 +259,8 @@ public class IgnisAssetLottery extends AbstractContract {
 
         @ContractSetupParameter
         default int maxPacks(){ return 5; }
+
+        @ContractSetupParameter
+        default int deadline(){ return 180; }
     }
 }
