@@ -1,5 +1,6 @@
-package com.jelurida.ardor.contracts;
+package org.tarasca.contracts;
 
+import com.jelurida.ardor.contracts.DistributedRandomNumberGenerator;
 import nxt.account.PaymentTransactionType;
 import nxt.addons.JA;
 import nxt.addons.JO;
@@ -11,7 +12,12 @@ import org.junit.Test;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.jelurida.ardor.contracts.TarascaTester.*;
+import com.jelurida.ardor.contracts.AbstractContractTest;
+import static org.tarasca.contracts.TarascaTester.*;
+import static org.tarasca.contracts.TarascaTester.initCollectionCurrency;
+import com.jelurida.ardor.contracts.ContractTestHelper;
+
+
 
 public class IgnisAssetLotteryTest extends AbstractContractTest {
 
@@ -219,7 +225,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         Logger.logDebugMessage("TEST: confirmSplitPayment(): Evaluate results");
         List<? extends ChildTransaction> transactions = getLastBlockChildTransactions(2);
 
-        //Assert.assertEquals(5,transactions.size()); can be different depending on duplicate cards picked
+        Assert.assertEquals(5,transactions.size());
         List<? extends ChildTransaction> payments =  transactions.stream()
                 .filter( t -> (t.getType()== PaymentTransactionType.ORDINARY))
                 .collect(Collectors.toList());
