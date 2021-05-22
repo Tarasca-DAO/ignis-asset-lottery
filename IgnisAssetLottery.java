@@ -12,16 +12,16 @@ import java.util.stream.Collectors;
 import nxt.addons.*;
 import nxt.crypto.Crypto;
 import nxt.blockchain.TransactionType;
-import nxt.http.callers.GetAccountAssetsCall;
-import nxt.http.callers.GetAssetsByIssuerCall;
-import nxt.http.callers.SendMoneyCall;
-import nxt.http.callers.TransferAssetCall;
+import nxt.http.callers.*;
 import nxt.http.responses.TransactionResponse;
 
 import static nxt.blockchain.ChildChain.IGNIS;
 
 
 public class IgnisAssetLottery extends AbstractContract {
+
+    //private final boolean WHITELIST = false;
+    //private final String SETTER = "ARDOR-SZKV-J8TH-GSM9-9LKV6";
 
     @ValidateContractRunnerIsRecipient
     @ValidateChain(accept = 2)
@@ -39,11 +39,14 @@ public class IgnisAssetLottery extends AbstractContract {
             long priceIgnis = runnerParams.priceIgnis()*IGNIS.ONE_COIN;
             long tarascaCut = runnerParams.tarascaCut()*IGNIS.ONE_COIN;
             long cardCut = runnerParams.cardCut()*IGNIS.ONE_COIN;
+            long referralCut = (long)(priceIgnis*runnerParams.referralRatio());
 
             int priceGiftz = runnerParams.priceGiftz();
             int cardsPerPack = runnerParams.cardsPerPack();
             int maxPacks = runnerParams.maxPacks();
             int deadline = runnerParams.deadline();
+
+            String setterRs = runnerParams.setterRs();
 
             // other parameters:
             String accountRs = context.getAccountRs();
@@ -67,8 +70,32 @@ public class IgnisAssetLottery extends AbstractContract {
                     context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain limit of 9tx", maxPacks);
                 }
 
+                JO whiteListInfo = accountPropertyCheck(triggerTransaction,setterRs);
+
+                if (!whiteListInfo.getBoolean("whitelisted")){
+                    return context.generateInfoResponse("account "+ triggerTransaction.getSenderRs() +" not invited, exit.");
+                }
+
                 if (payCut) {
-                    long tarascaCutTotal = tarascaCut * (long)numPacks;
+                    long tarascaCutTotal=0;
+                    long referralCutTotal = 0;
+                    if (whiteListInfo.getString("reason").equals("referral")) {
+                        // we have referrals to pay
+                        String referralRs = whiteListInfo.getString("invitedBy");
+                        referralCutTotal = referralCut * (long)numPacks;
+                        tarascaCutTotal = (tarascaCut-referralCut) * (long)numPacks;
+
+                        context.logInfoMessage("CONTRACT: paying referral of %d Ignis, to %s, on chain %d", referralCutTotal / IGNIS.ONE_COIN, referralRs,chainId);
+                        JO message = new JO();
+                        message.put("triggerTransaction",context.getTransaction().getTransactionId());
+                        message.put("reason","referral");
+                        SendMoneyCall sendMoneyReferral = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+                        context.createTransaction(sendMoneyReferral);
+                    }
+                    else {
+                        tarascaCutTotal = tarascaCut * (long)numPacks;
+                    }
+
                     context.logInfoMessage("CONTRACT: paying Tarasca %d Ignis, to %s, on chain %d", tarascaCutTotal / IGNIS.ONE_COIN, tarascaRs,chainId);
                     JO message = new JO();
                     message.put("triggerTransaction",context.getTransaction().getTransactionId());
@@ -203,13 +230,42 @@ public class IgnisAssetLottery extends AbstractContract {
 
     private int isIgnisPayment(TransactionResponse response, long priceIgnis) {
         long amount = 0;
-
-        if(response.getChainId() == 2) {
+        TransactionType Type = response.getTransactionType();
+        if(response.getChainId() == 2 && Type.getType() == 0 && Type.getSubtype() == 0) {
             amount = response.getAmount();
         }
-
         long boughtPacks = amount / priceIgnis;
+
         return boughtPacks >= 1L ? (int)boughtPacks : 0;
+    }
+
+
+    private JO accountPropertyCheck(TransactionResponse triggerTransaction, String setterRs) {
+        JO ret = new JO();
+        String senderRs = triggerTransaction.getSenderRs();
+        JO response = GetAccountPropertiesCall.create().setter(setterRs).recipient(senderRs).property("tdao.invite").call();
+        JA foundProps = response.getArray("properties");
+
+        if (foundProps.size() == 1) {
+            ret.put("whitelisted",true);
+
+            JO invite = foundProps.get(0);
+            JO value = JO.parse(invite.getString("value"));
+            String reason = value.getString("reason");
+            if (reason.equals("referral")) {
+                ret.put("reason","referral");
+                ret.put("invitedBy",value.getString("invitedBy"));
+                return ret;
+            }
+            else {
+                ret.put("reason", "tarascacard");
+                return ret;
+            }
+        }
+        else {
+            ret.put("whitelisted",false);
+            return ret;
+        }
     }
 
 
@@ -262,5 +318,11 @@ public class IgnisAssetLottery extends AbstractContract {
 
         @ContractSetupParameter
         default int deadline(){ return 180; }
+
+        @ContractSetupParameter
+        default String setterRs(){ return "ARDOR-SZKV-J8TH-GSM9-9LKV6"; }
+
+        @ContractSetupParameter
+        default double referralRatio(){ return 0.1; }
     }
 }
