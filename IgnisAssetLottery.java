@@ -89,7 +89,7 @@ public class IgnisAssetLottery extends AbstractContract {
                         JO message = new JO();
                         message.put("triggerTransaction",context.getTransaction().getTransactionId());
                         message.put("reason","referral");
-                        SendMoneyCall sendMoneyReferral = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+                        SendMoneyCall sendMoneyReferral = SendMoneyCall.create(chainId).recipient(referralRs).amountNQT(referralCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
                         context.createTransaction(sendMoneyReferral);
                     }
                     else {
@@ -320,7 +320,7 @@ public class IgnisAssetLottery extends AbstractContract {
         default int deadline(){ return 180; }
 
         @ContractSetupParameter
-        default String setterRs(){ return "ARDOR-SZKV-J8TH-GSM9-9LKV6"; }
+        default String setterRs(){ return "ARDOR-YAAE-KL8S-28Y4-BNQW3"; }
 
         @ContractSetupParameter
         default double referralRatio(){ return 0.1; }
