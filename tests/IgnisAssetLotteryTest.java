@@ -109,7 +109,11 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
         String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
-        generateBlock();
+
+        Logger.logInfoMessage("inviting players from setter: "+CHUCK.getRsAccount());
+        invitePlayer(CHUCK,DAVE);
+        invitePlayer(CHUCK,BOB);
+        generateBlock();generateBlock();
 
         Logger.logDebugMessage("TEST: buyMultiPacksGiftz(): Contracts deployed");
         //JA collectionAssets = TarascaTester.getCollectionAssets();
