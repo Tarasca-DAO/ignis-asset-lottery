@@ -321,7 +321,7 @@ public class IgnisAssetLottery extends AbstractContract {
         default int deadline(){ return 180; }
 
         @ContractSetupParameter
-        default boolean useWhitelist() {return false;}
+        default boolean useWhitelist() {return true;}
 
         @ContractSetupParameter
         default String setterRs(){ return "ARDOR-SZKV-J8TH-GSM9-9LKV6"; }
