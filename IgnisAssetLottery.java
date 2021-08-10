@@ -46,12 +46,12 @@ public class IgnisAssetLottery extends AbstractContract {
             int maxPacks = runnerParams.maxPacks();
             int deadline = runnerParams.deadline();
 
-            boolean useWhitelist = runnerParams.useWhitelist();
             String setterRs = runnerParams.setterRs();
 
             // other parameters:
             String accountRs = context.getAccountRs();
             int chainId = 2;
+            boolean BLOCKUNINVITED = false;
 
             boolean payCut = false;
             TransactionResponse triggerTransaction = context.getTransaction();
@@ -73,14 +73,14 @@ public class IgnisAssetLottery extends AbstractContract {
 
                 JO whiteListInfo = accountPropertyCheck(triggerTransaction,setterRs);
 
-                if (useWhitelist && !whiteListInfo.getBoolean("whitelisted")){
+                if (BLOCKUNINVITED && !whiteListInfo.getBoolean("whitelisted")){
                     return context.generateInfoResponse("account "+ triggerTransaction.getSenderRs() +" not invited, exit.");
                 }
 
                 if (payCut) {
                     long tarascaCutTotal=0;
                     long referralCutTotal = 0;
-                    if (whiteListInfo.getBoolean("whitelisted") && whiteListInfo.getString("reason").equals("referral")) {
+                    if (whiteListInfo.isExist("reason") && whiteListInfo.getString("reason").equals("referral")) {
                         // we have referrals to pay
                         String referralRs = whiteListInfo.getString("invitedBy");
                         referralCutTotal = referralCut * (long)numPacks;
@@ -321,10 +321,7 @@ public class IgnisAssetLottery extends AbstractContract {
         default int deadline(){ return 180; }
 
         @ContractSetupParameter
-        default boolean useWhitelist() {return true;}
-
-        @ContractSetupParameter
-        default String setterRs(){ return "ARDOR-SZKV-J8TH-GSM9-9LKV6"; }
+        default String setterRs(){ return "ARDOR-YAAE-KL8S-28Y4-BNQW3"; }
 
         @ContractSetupParameter
         default double referralRatio(){ return 0.1; }
