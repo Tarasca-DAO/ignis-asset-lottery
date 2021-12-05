@@ -52,6 +52,7 @@ public class IgnisAssetLottery extends AbstractContract {
             String accountRs = context.getAccountRs();
             int chainId = 2;
             boolean BLOCKUNINVITED = false;
+            boolean PAYREFERRALS = false;
 
             boolean payCut = false;
             TransactionResponse triggerTransaction = context.getTransaction();
@@ -68,10 +69,11 @@ public class IgnisAssetLottery extends AbstractContract {
                 context.logInfoMessage("CONTRACT: number of packs: %d", numPacks);
                 if (numPacks > maxPacks) {
                     numPacks = maxPacks;
-                    context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain limit of 9tx", maxPacks);
+                    context.logInfoMessage("CONTRACT: number of packs reduced to %d to fit chain", maxPacks);
                 }
 
                 JO whiteListInfo = accountPropertyCheck(triggerTransaction,setterRs);
+                context.logInfoMessage("whitelist information: ", whiteListInfo.toString());
 
                 if (BLOCKUNINVITED && !whiteListInfo.getBoolean("whitelisted")){
                     return context.generateInfoResponse("account "+ triggerTransaction.getSenderRs() +" not invited, exit.");
@@ -80,7 +82,7 @@ public class IgnisAssetLottery extends AbstractContract {
                 if (payCut) {
                     long tarascaCutTotal=0;
                     long referralCutTotal = 0;
-                    if (whiteListInfo.isExist("reason") && whiteListInfo.getString("reason").equals("referral")) {
+                    if (PAYREFERRALS && whiteListInfo.isExist("reason") && whiteListInfo.getString("reason").equals("referral")) {
                         // we have referrals to pay
                         String referralRs = whiteListInfo.getString("invitedBy");
                         referralCutTotal = referralCut * (long)numPacks;
@@ -299,31 +301,31 @@ public class IgnisAssetLottery extends AbstractContract {
     @ContractParametersProvider
     public interface RunnerParams {
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default long priceIgnis() { return 99L; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default long tarascaCut() { return 40L; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default long cardCut() { return 10L; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default int priceGiftz() { return 1; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default int cardsPerPack() { return 3; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default int maxPacks(){ return 5; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default int deadline(){ return 180; }
 
-        @ContractSetupParameter
-        default String setterRs(){ return "ARDOR-YAAE-KL8S-28Y4-BNQW3"; }
+        @ContractRunnerParameter
+        default String setterRs(){ return "ARDOR-Q9KZ-74XD-WERK-CV6GB"; }
 
-        @ContractSetupParameter
+        @ContractRunnerParameter
         default double referralRatio(){ return 0.1; }
     }
 }
