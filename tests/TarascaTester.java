@@ -118,6 +118,34 @@ public class TarascaTester {
         }
     }
 
+    public static void initSmallCollection(int numAssets){
+        Logger.logMessage("TarascaTester.initCollection(): from account: "+ ALICE.getRsAccount());
+        for (int i=0; i<numAssets; i++){
+            int q = 1000;
+            String rarity = "common";
+            if (i==0 | i==1){
+                q = 250;
+                rarity = "rare";
+            }
+            Logger.logMessage("TarascaTester.initCollection(): create Asset: Asset"+i);
+            String name = String.format("Asset%s", i);
+            JO description = new JO();
+            description.put("description",String.format("this is Asset %s description",i));
+            description.put("rarity",rarity);
+            JO response = IssueAssetCall.create(IGNIS.getId()).
+                    secretPhrase(ALICE.getSecretPhrase()).
+                    description(description.toJSONString()).
+                    name(name).
+                    quantityQNT(q).
+                    decimals(0).
+                    feeNQT(IGNIS.ONE_COIN*100).
+                    call();
+            generateBlock();
+            //int j = i; // this is useless
+        }
+    }
+
+
     public static void sendCoin(String currencyId, int amount, String recipient, String secretPhrase){
         JO response = TransferCurrencyCall.create(IGNIS.getId()).
                 currency(currencyId).

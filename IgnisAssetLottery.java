@@ -14,14 +14,15 @@ import nxt.crypto.Crypto;
 import nxt.blockchain.TransactionType;
 import nxt.http.callers.*;
 import nxt.http.responses.TransactionResponse;
+import nxt.util.Convert;
 
 import static nxt.blockchain.ChildChain.IGNIS;
 
 
 public class IgnisAssetLottery extends AbstractContract {
 
-    //private final boolean WHITELIST = false;
-    //private final String SETTER = "ARDOR-SZKV-J8TH-GSM9-9LKV6";
+    private long feeRateNQTPerFXT = 0;
+
 
     @ValidateContractRunnerIsRecipient
     @ValidateChain(accept = 2)
@@ -47,6 +48,31 @@ public class IgnisAssetLottery extends AbstractContract {
             int deadline = runnerParams.deadline();
 
             String setterRs = runnerParams.setterRs();
+
+            String feePriorityString = runnerParams.feePriority().toUpperCase();
+            long minFeeRateNQTPerFXT = runnerParams.minRateNQTPerFXT();
+            long maxFeeRateNQTPerFXT = runnerParams.maxRateNQTPerFXT();
+
+            JA rates = nxt.http.callers.GetBundlerRatesCall.create()
+                    .minBundlerBalanceFXT(10)
+                    .minBundlerFeeLimitFQT(1)
+                    .transactionPriority(feePriorityString)
+                    .call()
+                    .getArray("rates");
+
+            for(JO rate : rates.objects()) {
+                if(rate.getInt("chain") == 2) {
+                    feeRateNQTPerFXT = Convert.parseUnsignedLong(rate.getString("minRateNQTPerFXT"));
+
+                    if(feeRateNQTPerFXT < minFeeRateNQTPerFXT)
+                        feeRateNQTPerFXT = minFeeRateNQTPerFXT;
+
+                    if (feeRateNQTPerFXT > maxFeeRateNQTPerFXT)
+                        feeRateNQTPerFXT = maxFeeRateNQTPerFXT;
+                }
+            }
+
+            context.logInfoMessage("feeRateNQTPerFXT: " + feeRateNQTPerFXT);
 
             // other parameters:
             String accountRs = context.getAccountRs();
@@ -92,7 +118,16 @@ public class IgnisAssetLottery extends AbstractContract {
                         JO message = new JO();
                         message.put("triggerTransaction",context.getTransaction().getTransactionId());
                         message.put("reason","referral");
-                        SendMoneyCall sendMoneyReferral = SendMoneyCall.create(chainId).recipient(referralRs).amountNQT(referralCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+
+                        SendMoneyCall sendMoneyReferral = SendMoneyCall.create(chainId)
+                                .recipient(referralRs)
+                                .amountNQT(referralCutTotal)
+                                .message(message.toJSONString())
+                                .messageIsText(true)
+                                .messageIsPrunable(true)
+                                .deadline(deadline)
+                                .feeRateNQTPerFXT(feeRateNQTPerFXT);
+
                         context.createTransaction(sendMoneyReferral);
                     }
                     else {
@@ -103,12 +138,30 @@ public class IgnisAssetLottery extends AbstractContract {
                     JO message = new JO();
                     message.put("triggerTransaction",context.getTransaction().getTransactionId());
                     message.put("reason","payment");
-                    SendMoneyCall sendMoneyTarasca = SendMoneyCall.create(chainId).recipient(tarascaRs).amountNQT(tarascaCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+
+                    SendMoneyCall sendMoneyTarasca = SendMoneyCall.create(chainId)
+                            .recipient(tarascaRs)
+                            .amountNQT(tarascaCutTotal)
+                            .message(message.toJSONString())
+                            .messageIsText(true)
+                            .messageIsPrunable(true)
+                            .deadline(deadline)
+                            .feeRateNQTPerFXT(feeRateNQTPerFXT);
+
                     context.createTransaction(sendMoneyTarasca);
 
                     long cardCutTotal = cardCut * (long)numPacks;
                     context.logInfoMessage("CONTRACT: paying Tarasca Card holders %d Ignis, to %s, on chain %d", cardCutTotal / IGNIS.ONE_COIN, cardRs,chainId);
-                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId).recipient(cardRs).amountNQT(cardCutTotal).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+
+                    SendMoneyCall sendMoneyCards = SendMoneyCall.create(chainId)
+                            .recipient(cardRs)
+                            .amountNQT(cardCutTotal)
+                            .message(message.toJSONString())
+                            .messageIsText(true)
+                            .messageIsPrunable(true)
+                            .deadline(deadline)
+                            .feeRateNQTPerFXT(feeRateNQTPerFXT);
+
                     context.createTransaction(sendMoneyCards);
 
                 } else {
@@ -138,32 +191,65 @@ public class IgnisAssetLottery extends AbstractContract {
                 // random seed derived from long from HASH(secretForRandomString | blockId | transactionFullHash)
                 context.initRandom(longLsbFromBytes(digest.digest()));
 
-                Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
                 ContractAndSetupParameters contractAndParameters = context.loadContract("DistributedRandomNumberGenerator");
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
                 DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
 
-
-                Map<String, Integer> pack = new HashMap(numPacks * cardsPerPack);
-
-                for(int j = 0; j < numPacks; ++j) {
-                    for(int i = 0; i < cardsPerPack; ++i) {
-                        String asset = distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
-                        Integer curValue = pack.putIfAbsent(asset, 1);
-                        if (curValue != null) {
-                            pack.put(asset, curValue + 1);
-                        }
-
-                        context.logInfoMessage("CONTRACT: selected asset: %s", asset);
-                    }
+                {
+                    // currently ineffective monitor of account balance. will need an implementation in the for loop below.
+                    Map<String, Long> assetCounts = this.countAllAssetsInAccount(accountAssets, collectionAssets);
+                    long assetCount = assetCounts.values().stream().mapToLong(Long::longValue).sum();
+                    context.logInfoMessage("Assets in the account: %d, assets to be purchased: %d", assetCount, numPacks * cardsPerPack);
+                    if (assetCount < numPacks * cardsPerPack)
+                        return context.generateErrorResponse(20011, "not enough cards in the account for this purchase.");
                 }
+
+                Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
+
+                Map<String, Integer> pack = new HashMap();
+
+                int i = 0;
+                while (i < numPacks*cardsPerPack){
+                        String asset = distributedRandomNumberGenerator.processInvocation(delegatedContext, assetsForDraw);
+
+                        // here the asset quantity in the account should be checked and compared to the value in the pack, if already there.
+                        JO aAsset = accountAssets.objects().stream().filter(a -> (asset.equals(a.getString("asset")) )).findFirst().orElse(new JO());
+                        Long assetsInAccount = aAsset.getLong("quantityQNT");
+
+                        Integer curValue = pack.get(asset);
+
+                        if(curValue != null && curValue >= assetsInAccount){
+                            // asset can't be chosen again, need to draw another one. ideally, remove from "assetsForDraw" list to reduce computational effort.
+                            assetsForDraw.remove(asset);
+                        }
+                        else if ( curValue != null && curValue < assetsInAccount ){
+                            pack.put(asset, curValue + 1);
+                            i++;
+                        }
+                        else {
+                            pack.putIfAbsent(asset, 1);
+                            i++;
+                        }
+                        //context.logInfoMessage("selected asset: %s", asset);
+                    //}
+                }
+                context.logInfoMessage("selected assets pack: " + pack.toString());
 
                 JO message = new JO();
                 message.put("triggerTransaction",context.getTransaction().getTransactionId());
                 message.put("reason","boosterPack");
 
                 pack.forEach((assetx, quantity) -> {
-                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId).recipient(triggerTransaction.getSenderRs()).asset(assetx).quantityQNT((long)quantity).message(message.toJSONString()).messageIsText(true).messageIsPrunable(true).deadline(deadline);
+
+                    TransferAssetCall transferAsset = TransferAssetCall.create(chainId)
+                            .recipient(triggerTransaction.getSenderRs())
+                            .asset(assetx).quantityQNT((long)quantity)
+                            .message(message.toJSONString())
+                            .messageIsText(true)
+                            .messageIsPrunable(true)
+                            .deadline(deadline)
+                            .feeRateNQTPerFXT(feeRateNQTPerFXT);
+
                     context.createTransaction(transferAsset);
                 });
                 context.logInfoMessage("CONTRACT: done");
@@ -201,20 +287,49 @@ public class IgnisAssetLottery extends AbstractContract {
                             // make sure that assetID is available in the contract account. the asset ID should be unique (list of size 1)
                             List<JO> aAssets = accountAssets.objects().stream().filter(
                                     a -> (asset.getString("asset").equals(a.getString("asset")) )).collect(Collectors.toList());
-                            boolean isAvailable = aAssets.get(0).getLong("quantityQNT") > 0;
+                            // limit is set to 99 assets required in the account. This way we're safe for 100 pack purchased, if 1/3 of all draws would be that single card
 
-                            if (isAvailable) {
-                              return weight;
+                            if (aAssets.size()>0){
+                                boolean isAvailable = aAssets.get(0).getLong("quantityQNT") > 0;
+
+                                if (isAvailable) {
+                                    return weight;
+                                }
+                                else {
+                                    return 0L;
+                                }
                             }
-                            else {
-                              return 0L;
-                            }
+                            else
+                                return 0L;
                         }
                 )
         );
         return assetWeights;
     }
 
+    private Map<String, Long> countAllAssetsInAccount(JA accountAssets, JA collectionAssets) {
+        Map<String, Long> assetCounts = collectionAssets.objects().stream().collect(
+                Collectors.toMap(
+                        (asset) -> {
+                            return asset.getString("asset");
+
+                        }, (asset) -> {
+
+                            // make sure that assetID is available in the contract account. the asset ID should be unique (list of size 1)
+                            List<JO> aAssets = accountAssets.objects().stream().filter(
+                                    a -> (asset.getString("asset").equals(a.getString("asset")) )).collect(Collectors.toList());
+
+                            // limit is set to 99 assets required in the account. This way we're safe for 100 pack purchased, if 1/3 of all draws would be that single card
+                            if (aAssets.size()>0)
+                                return aAssets.get(0).getLong("quantityQNT");
+                            else
+                                return 0L;
+
+                        }
+                )
+        );
+        return assetCounts;
+    }
 
     private int isGiftzPayment(TransactionResponse response, String currency, int priceGiftz) {
         TransactionType Type = response.getTransactionType();
@@ -317,7 +432,7 @@ public class IgnisAssetLottery extends AbstractContract {
         default int cardsPerPack() { return 3; }
 
         @ContractRunnerParameter
-        default int maxPacks(){ return 5; }
+        default int maxPacks(){ return 99; }
 
         @ContractRunnerParameter
         default int deadline(){ return 180; }
@@ -327,5 +442,15 @@ public class IgnisAssetLottery extends AbstractContract {
 
         @ContractRunnerParameter
         default double referralRatio(){ return 0.1; }
+
+        @ContractRunnerParameter
+        default String feePriority(){ return "NORMAL"; }
+
+        @ContractRunnerParameter
+        default long minRateNQTPerFXT(){ return 1500000000; }
+
+        @ContractRunnerParameter
+        default long maxRateNQTPerFXT(){ return 2000000000; }
     }
 }
+
