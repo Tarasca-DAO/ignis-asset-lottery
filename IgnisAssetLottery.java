@@ -195,14 +195,13 @@ public class IgnisAssetLottery extends AbstractContract {
                 Contract<Map<String, Long>, String> distributedRandomNumberGenerator = contractAndParameters.getContract();
                 DelegatedContext delegatedContext = new DelegatedContext(context, distributedRandomNumberGenerator.getClass().getName(), contractAndParameters.getParams());
 
-                {
-                    // currently ineffective monitor of account balance. will need an implementation in the for loop below.
-                    Map<String, Long> assetCounts = this.countAllAssetsInAccount(accountAssets, collectionAssets);
-                    long assetCount = assetCounts.values().stream().mapToLong(Long::longValue).sum();
-                    context.logInfoMessage("Assets in the account: %d, assets to be purchased: %d", assetCount, numPacks * cardsPerPack);
-                    if (assetCount < numPacks * cardsPerPack)
-                        return context.generateErrorResponse(20011, "not enough cards in the account for this purchase.");
-                }
+                Map<String, Long> assetCounts = this.countAllAssetsInAccount(accountAssets, collectionAssets);
+                long assetCount = assetCounts.values().stream().mapToLong(Long::longValue).sum();
+
+                context.logInfoMessage("Assets in the account: %d, assets to be purchased: %d", assetCount, numPacks * cardsPerPack);
+
+                if (assetCount < numPacks * cardsPerPack)
+                    return context.generateErrorResponse(20011, "not enough cards in the account for this purchase.");
 
                 Map<String, Long> assetsForDraw = this.getAssetsForDraw(accountAssets, collectionAssets);
 
