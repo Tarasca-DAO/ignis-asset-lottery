@@ -23,6 +23,9 @@ public class IgnisAssetLottery extends AbstractContract {
 
     private long feeRateNQTPerFXT = 0;
 
+    private Map<String, Long> allAssetCountsBlock = new HashMap<>();
+    private long totalAssetCountBlock = 0;
+
 
     @ValidateContractRunnerIsRecipient
     @ValidateChain(accept = 2)
@@ -389,6 +392,43 @@ public class IgnisAssetLottery extends AbstractContract {
     public static long longLsbFromBytes(byte[] bytes) {
         BigInteger bi = new BigInteger(1, new byte[] {bytes[7], bytes[6], bytes[5], bytes[4], bytes[3], bytes[2], bytes[1], bytes[0]});
         return bi.longValue();
+    }
+
+
+    public JO processBlock(BlockContext context) {
+        IgnisAssetLottery.ContractParams contractParams = context.getParams(IgnisAssetLottery.ContractParams.class);
+        String collectionRs = contractParams.col();// context.getAccountRs();
+        String accountRs = context.getAccountRs();
+
+        JO accAssets = GetAccountAssetsCall.create().account(accountRs).call();
+        JA accountAssets = accAssets.getArray("accountAssets");
+        JO cAssets = GetAssetsByIssuerCall.create().account(collectionRs).call();
+        JA schachtel = cAssets.getArray("assets");
+        JA collectionAssets = new JA(schachtel.getObject(0));
+
+        allAssetCountsBlock = this.countAllAssetsInAccount(accountAssets, collectionAssets);
+        totalAssetCountBlock = allAssetCountsBlock.values().stream().mapToLong(Long::longValue).sum();
+        return context.generateInfoResponse("assets in account: %d",totalAssetCountBlock);
+    }
+
+
+    public JO processRequest(RequestContext context){
+        context.logInfoMessage("received API request.");
+        JO message = new JO();
+        if (allAssetCountsBlock.size() == 0){
+            message.put("assetCounts",new JO());
+            message.put("totalAssetCount",0);
+            return message;
+        }
+
+        //context.logInfoMessage("apiRequest: );
+        JO assetCountOutput = new JO();
+        for (String i : allAssetCountsBlock.keySet()) {
+            assetCountOutput.put(i,allAssetCountsBlock.get(i));
+        }
+        message.put("assetCounts",assetCountOutput);
+        message.put("totalAssetCount",totalAssetCountBlock);
+        return message;
     }
 
 
