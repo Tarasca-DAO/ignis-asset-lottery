@@ -408,12 +408,11 @@ public class IgnisAssetLottery extends AbstractContract {
 
         allAssetCountsBlock = this.countAllAssetsInAccount(accountAssets, collectionAssets);
         totalAssetCountBlock = allAssetCountsBlock.values().stream().mapToLong(Long::longValue).sum();
-        return context.generateInfoResponse("assets in account: %d",totalAssetCountBlock);
+        return context.generateInfoResponse("IgnisAssetLottery: assets in account: %d",totalAssetCountBlock);
     }
 
 
     public JO processRequest(RequestContext context){
-        context.logInfoMessage("received API request.");
         JO message = new JO();
         if (allAssetCountsBlock.size() == 0){
             message.put("assetCounts",new JO());
@@ -421,7 +420,6 @@ public class IgnisAssetLottery extends AbstractContract {
             return message;
         }
 
-        //context.logInfoMessage("apiRequest: );
         JO assetCountOutput = new JO();
         for (String i : allAssetCountsBlock.keySet()) {
             assetCountOutput.put(i,allAssetCountsBlock.get(i));

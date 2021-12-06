@@ -9,6 +9,7 @@ import nxt.blockchain.ChildTransaction;
 import nxt.http.callers.SetAccountPropertyCall;
 import nxt.http.callers.SetAssetPropertyCall;
 import nxt.http.callers.TransferAssetCall;
+import nxt.http.callers.TriggerContractByRequestCall;
 import nxt.util.Convert;
 import nxt.util.Logger;
 import org.h2.value.Transfer;
@@ -208,7 +209,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
 
     @Test
     public void emptyAccount() {
-        Logger.logInfoMessage("TEST: maxTransactionLimits(): Start test");
+        Logger.logInfoMessage("TEST: emptyAccount(): Start test");
 
         int cardsPerPack = TarascaTester.cardsPerPack();
 
@@ -249,12 +250,12 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
         generateBlock();
 
-        Logger.logInfoMessage("TEST: maxTransactionLimits(): Contracts deployed");
+        Logger.logInfoMessage("TEST: emptyAccount(): Contracts deployed");
 
         //SJA collectionAssets = TarascaTester.getCollectionAssets();
 
 
-        Logger.logInfoMessage("TEST: maxTransactionLimits(): Start playing");
+        Logger.logInfoMessage("TEST: emptyAccount(): Start playing");
         generateBlock();
         buyPacksIgnis(30, contractName, DAVE.getSecretPhrase());
         generateBlock();
@@ -262,7 +263,7 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         generateBlock();
         generateBlock();
 
-        Logger.logInfoMessage("TEST: maxTransactionLimits(): Evaluation of results");
+        Logger.logInfoMessage("TEST: emptyAccount(): Evaluation of results");
         // Check bob bought a pack.
         JO bobsResponse = getAccountAssets(BOB.getRsAccount());
         JA bobsAssets = new JA(bobsResponse.get("accountAssets")); // Need to unbox another array
@@ -273,10 +274,95 @@ public class IgnisAssetLotteryTest extends AbstractContractTest {
         JA davesAssets = new JA(davesResponse.get("accountAssets")); // Need to unbox another array
         int numDaves = davesAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
 
-        Logger.logInfoMessage("TEST maxTransactionLimits() results: received assets: numBobs: %d, numDaves: %d",numBobs,numDaves);
+        Logger.logInfoMessage("TEST emptyAccount() results: received assets: numBobs: %d, numDaves: %d",numBobs,numDaves);
 
         Assert.assertTrue(numDaves == 30 * cardsPerPack);
         Assert.assertTrue(numBobs == 0);
+    }
+
+    @Test
+    public void checkApi() {
+        Logger.logInfoMessage("TEST: checkApi(): Start test");
+
+        int cardsPerPack = TarascaTester.cardsPerPack();
+
+        initCollectionCurrency();
+        initSmallCollection(3);
+        generateBlock();
+
+        JO response = getAccountAssets(ALICE.getRsAccount());
+        JA aAssets = response.getArray("accountAssets");
+
+
+        for(int i=0; i<2;i++){
+
+            JO asset = aAssets.get(i);
+            Long assetId = Convert.parseUnsignedLong(asset.getString("asset"));
+            Long quantity = Convert.parseUnsignedLong(asset.getString("quantityQNT"));
+
+            JO response_ = TransferAssetCall.create(IGNIS.getId()).
+                    asset(assetId).
+                    recipient(RIKER.getRsAccount()).
+                    quantityQNT(quantity).
+                    secretPhrase(ALICE.getSecretPhrase()).
+                    feeNQT(IGNIS.ONE_COIN).
+                    call();
+        }
+
+
+        JO currencyInfo = getCollectionCurrency();
+        String currencyId = currencyInfo.getString("currency");
+
+        JO setupParams = new JO();
+        setupParams.put("tdao", RIKER.getRsAccount());
+        setupParams.put("tcard", RIKER.getRsAccount());
+        setupParams.put("col", ALICE.getRsAccount()); // collection equals contract runner
+        setupParams.put("valCur", currencyId);
+
+        String contractName = ContractTestHelper.deployContract(IgnisAssetLottery.class, setupParams, false);
+        ContractTestHelper.deployContract(DistributedRandomNumberGenerator.class, null, true);
+        generateBlock();
+
+        Logger.logInfoMessage("TEST: checkApi(): Contracts deployed");
+
+        JO contractResponse = TriggerContractByRequestCall.create().contractName("IgnisAssetLottery").call();
+        Logger.logInfoMessage(contractResponse.toString());
+        //SJA collectionAssets = TarascaTester.getCollectionAssets();
+
+
+        Logger.logInfoMessage("TEST: checkApi(): Start playing");
+        generateBlock();
+
+        buyPacksIgnis(30, contractName, DAVE.getSecretPhrase());
+        generateBlock();
+
+        contractResponse = TriggerContractByRequestCall.create().contractName("IgnisAssetLottery").call();
+        Logger.logInfoMessage(contractResponse.toString());
+
+        buyPacksIgnis(54, contractName, BOB.getSecretPhrase());
+        generateBlock();
+
+        contractResponse = TriggerContractByRequestCall.create().contractName("IgnisAssetLottery").call();
+        Logger.logInfoMessage(contractResponse.toString());
+        generateBlock();
+
+        Logger.logInfoMessage("TEST: checkApi(): Evaluation of results");
+        // Check bob bought a pack.
+        JO bobsResponse = getAccountAssets(BOB.getRsAccount());
+        JA bobsAssets = new JA(bobsResponse.get("accountAssets")); // Need to unbox another array
+        int numBobs = bobsAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
+
+        // Check dave bought 5 packs
+        JO davesResponse = getAccountAssets(DAVE.getRsAccount());
+        JA davesAssets = new JA(davesResponse.get("accountAssets")); // Need to unbox another array
+        int numDaves = davesAssets.objects().stream().map(a -> a.getInt("quantityQNT")).collect(Collectors.summingInt(i -> i));
+
+        Logger.logInfoMessage("TEST checkApi() results: received assets: numBobs: %d, numDaves: %d",numBobs,numDaves);
+
+        Assert.assertTrue(numDaves == 30 * cardsPerPack);
+        Assert.assertTrue(numBobs == 0);
+        // Reminder to add check for the returned message!
+        Assert.assertTrue(false);
     }
 
     @Test
